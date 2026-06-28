@@ -1,0 +1,1405 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collegevarnasrama 🇹🇬 – Bhakti Yoga & Varna</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+    <!-- Stripe -->
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        :root {
+            --sattva: #f4e1c1; --rajas: #e07a5f; --tamas: #3d405b;
+            --bg: #faf3e0; --card: #ffffff; --text: #2c2c2c;
+            --accent: #81b29a; --gold: #f2cc8f; --border: #e0cfb0;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Lato', sans-serif;
+            background: var(--bg); color: var(--text); line-height: 1.6;
+        }
+        header {
+            background: linear-gradient(135deg, #3d405b 0%, #5a5e7a 50%, #3d405b 100%);
+            background-size: 400% 400%;
+            animation: gradientMove 15s ease infinite;
+            color: white; padding: 1.5rem 1rem 1rem; text-align: center;
+            border-bottom: 4px solid var(--gold); position: relative; overflow: hidden;
+        }
+        @keyframes gradientMove { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        header h1 { font-family: 'Playfair Display', serif; font-size: 2.2rem; letter-spacing: 1px; animation: titleGlow 2s ease-in-out infinite alternate; }
+        @keyframes titleGlow { from { text-shadow: 0 0 5px rgba(255,255,255,0.3); } to { text-shadow: 0 0 20px rgba(255,255,255,0.7); } }
+        header p { font-style: italic; opacity: 0.85; font-size: 0.95rem; margin-top: 0.3rem; }
+        .user-area { position: absolute; right: 1.5rem; top: 1.2rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+        .user-area button, .user-area span {
+            background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.5);
+            color: white; padding: 0.3rem 1rem; border-radius: 20px; font-size: 0.85rem; cursor: pointer; transition: background 0.3s;
+            font-family: 'Lato', sans-serif;
+        }
+        .user-area button:hover { background: rgba(255,255,255,0.35); }
+        .cart-badge {
+            position: absolute; left: 1.5rem; top: 1.2rem;
+            background: var(--gold); color: #3d405b; border-radius: 50px;
+            padding: 0.3rem 0.9rem; display: flex; align-items: center; gap: 0.3rem;
+            font-weight: bold; font-size: 0.95rem; cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.25); transition: transform 0.2s;
+        }
+        .cart-badge.pulse { animation: pulse 0.4s ease-out; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.25); } 100% { transform: scale(1); } }
+        nav {
+            display: flex; justify-content: center; gap: 0.8rem; padding: 1rem;
+            background: white; border-bottom: 1px solid var(--border); flex-wrap: wrap;
+            position: sticky; top: 0; z-index: 100;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        nav button {
+            background: none; border: 2px solid var(--accent); color: var(--accent);
+            padding: 0.5rem 1.2rem; border-radius: 30px; font-weight: 700;
+            cursor: pointer; transition: all 0.2s; font-size: 0.95rem;
+            font-family: 'Lato', sans-serif;
+        }
+        nav button.active, nav button:hover { background: var(--accent); color: white; }
+        .container { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; }
+        .card {
+            background: var(--card); border-radius: 16px; padding: 2rem;
+            margin-bottom: 2rem; box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+            border: 1px solid var(--border);
+        }
+        .hidden { display: none !important; }
+        h2 { margin-bottom: 1.5rem; color: #3d405b; font-family: 'Playfair Display', serif; }
+        .btn-primary {
+            background: var(--accent); color: white; border: none; padding: 0.75rem 2rem;
+            border-radius: 30px; font-weight: 700; cursor: pointer; font-size: 0.97rem;
+            transition: all 0.2s; font-family: 'Lato', sans-serif; display: inline-block;
+        }
+        .btn-primary:hover { background: #6a9e87; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(129,178,154,0.4); }
+        .btn-secondary {
+            background: transparent; border: 2px solid var(--border); color: var(--text);
+            padding: 0.4rem 1rem; border-radius: 30px; cursor: pointer; font-weight: 700;
+            font-family: 'Lato', sans-serif; font-size: 0.9rem; transition: background 0.2s;
+        }
+        .btn-secondary:hover { background: #f0ebe0; }
+        .modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.55); display: flex; align-items: center;
+            justify-content: center; z-index: 1000;
+        }
+        .modal-content {
+            background: white; padding: 2rem; border-radius: 16px;
+            width: 92%; max-width: 420px; position: relative;
+            max-height: 90vh; overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: modalIn 0.2s ease;
+        }
+        @keyframes modalIn { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .close-modal { position: absolute; top: 0.8rem; right: 1.2rem; font-size: 1.8rem; cursor: pointer; color: #aaa; }
+        .close-modal:hover { color: #333; }
+        .toast {
+            position: fixed; bottom: 2rem; right: 2rem; background: #3d405b;
+            color: white; padding: 0.8rem 1.5rem; border-radius: 12px;
+            font-size: 0.95rem; z-index: 2000; opacity: 0;
+            transform: translateY(20px); transition: all 0.3s;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+
+        /* Découverte */
+        .discovery-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
+        .discovery-block { background: #f8f4ea; border-radius: 12px; padding: 1.5rem; border-left: 4px solid var(--accent); }
+        .discovery-block h3 { color: var(--tamas); margin-bottom: 0.5rem; font-family: 'Playfair Display', serif; }
+        .video-wrapper { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; margin: 1.5rem 0; }
+        .video-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 12px; border: none; }
+        .accordion { margin: 1.5rem 0; }
+        .accordion-item { margin-bottom: 0.5rem; border-radius: 12px; overflow: hidden; border: 2px solid var(--border); }
+        .accordion-btn {
+            width: 100%; text-align: left; padding: 1rem 1.2rem; background: #f8f4ea; border: none;
+            font-size: 1rem; font-weight: 700; cursor: pointer; display: flex; justify-content: space-between;
+            align-items: center; color: var(--text); font-family: 'Lato', sans-serif; transition: background 0.2s;
+        }
+        .accordion-btn:hover { background: #eee8d8; }
+        .accordion-btn.open { background: #e2f0e5; }
+        .accordion-btn::after { content: '▾'; font-size: 1.2rem; transition: transform 0.3s; }
+        .accordion-btn.open::after { transform: rotate(180deg); }
+        .accordion-content {
+            padding: 0; max-height: 0; overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s;
+            background: white; line-height: 1.8;
+        }
+        .accordion-content.open { max-height: 600px; padding: 1rem 1.2rem; }
+
+        /* Questionnaire */
+        .question-box h3 { font-family: 'Playfair Display', serif; font-size: 1.3rem; margin-bottom: 1rem; color: var(--tamas); }
+        .answers { display: flex; flex-direction: column; gap: 0.6rem; margin: 1rem 0; }
+        .answer-btn {
+            background: #f8f4ea; border: 2px solid var(--border); padding: 0.9rem 1.2rem;
+            border-radius: 12px; text-align: left; cursor: pointer;
+            transition: all 0.2s; font-size: 0.98rem; font-family: 'Lato', sans-serif;
+        }
+        .answer-btn:hover { background: #e8f5ec; border-color: var(--accent); transform: translateX(4px); }
+        .answer-btn.selected { background: #d4edda; border-color: #52a369; font-weight: 700; }
+        .answer-btn.disabled { pointer-events: none; opacity: 0.6; }
+        .progress-wrap { margin: 1.5rem 0 0.5rem; }
+        .progress { width: 100%; background: #e9e4d8; height: 10px; border-radius: 5px; }
+        .progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent), #52a369); border-radius: 5px; transition: width 0.4s ease; }
+        #question-counter { color: #888; font-size: 0.9rem; margin-top: 0.4rem; }
+        .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start; margin: 1.5rem 0; }
+        canvas { max-width: 280px; width: 100%; margin: 0 auto; display: block; }
+        .varna-explanations { font-size: 0.97rem; }
+        .varna-explanations p { margin-bottom: 1rem; padding: 0.8rem; background: #f8f4ea; border-radius: 10px; }
+        .dominant-varna { background: linear-gradient(135deg, var(--tamas), #5a5e7a); color: white; border-radius: 12px; padding: 1.2rem; margin-bottom: 1.5rem; text-align: center; }
+        .dominant-varna h3 { font-family: 'Playfair Display', serif; color: white; margin-bottom: 0.3rem; }
+
+        /* Communautés */
+        .community-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+        .community-card {
+            background: #fffdf7; border-radius: 16px; padding: 1.5rem;
+            border: 1px solid var(--border); box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .community-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
+        .community-card h3 { font-family: 'Playfair Display', serif; margin-bottom: 0.4rem; color: var(--tamas); }
+        .community-card p { font-size: 0.93rem; margin-bottom: 0.4rem; }
+        .match-stars { font-size: 1.3rem; margin-top: 0.5rem; }
+        .match-label { font-size: 0.82rem; color: #888; }
+        .form-inline { background: #f8f4ea; padding: 1.5rem; border-radius: 12px; margin-top: 1rem; border: 1px solid var(--border); }
+        .form-inline h4 { font-family: 'Playfair Display', serif; margin-bottom: 1rem; color: var(--tamas); }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.3rem; font-weight: 700; font-size: 0.9rem; }
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%; padding: 0.65rem; border: 2px solid var(--border);
+            border-radius: 8px; font-family: 'Lato', sans-serif; font-size: 0.97rem;
+            background: white; transition: border-color 0.2s;
+        }
+        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--accent); }
+        .needs-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+        .need-field { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
+        .need-field label { font-size: 0.82rem; font-weight: 700; color: var(--tamas); }
+        .need-field input { width: 70px; text-align: center; }
+
+        /* Boutique */
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; }
+        .product-card {
+            background: #fffdf7; border-radius: 16px; padding: 1.5rem;
+            border: 1px solid var(--border); text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .product-card:hover { transform: translateY(-5px); box-shadow: 0 12px 25px rgba(0,0,0,0.1); }
+        .product-emoji { font-size: 3rem; margin-bottom: 0.5rem; }
+        .product-card h3 { font-family: 'Playfair Display', serif; font-size: 1.05rem; margin-bottom: 0.3rem; }
+        .product-card p { font-size: 0.88rem; color: #666; margin-bottom: 0.5rem; }
+        .product-price { font-weight: 700; color: var(--rajas); font-size: 1.1rem; margin: 0.5rem 0; }
+        .product-price-fcfa { font-size: 0.9rem; color: #555; margin-bottom: 0.5rem; }
+
+        /* Profil */
+        .profile-avatar { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid var(--accent); }
+        .sadhana-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        .sadhana-table th, .sadhana-table td { border: 1px solid var(--border); padding: 0.5rem; text-align: center; }
+        .chat-messages { max-height: 300px; overflow-y: auto; margin-bottom: 1rem; padding: 0.5rem; background: #fafafa; border-radius: 8px; }
+        .chat-msg { margin-bottom: 0.5rem; }
+        .chat-msg strong { color: var(--tamas); }
+        .roles-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
+        .role-card {
+            background: #f8f4ea; border-radius: 12px; padding: 1.5rem;
+            border-left: 4px solid var(--accent); transition: transform 0.2s;
+        }
+        .role-card:hover { transform: translateY(-3px); }
+        .role-card h3 { color: var(--tamas); margin-bottom: 0.8rem; font-family: 'Playfair Display', serif; }
+        .role-card p { font-size: 0.93rem; color: #555; }
+        .qr-code-container { text-align: center; margin: 2rem 0; }
+        .qr-code-container img { max-width: 200px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .payment-instructions { background: #f0f8f4; padding: 1.5rem; border-radius: 12px; text-align: center; }
+        .payment-instructions p { margin-bottom: 0.5rem; font-size: 1.1rem; }
+        .payment-instructions strong { color: var(--tamas); font-size: 1.3rem; }
+        .formations-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
+        .vidya-card {
+            background: #f8f4ea; border-radius: 12px; padding: 1.5rem;
+            border-left: 4px solid var(--accent); transition: transform 0.2s;
+        }
+        .vidya-card h3 { color: var(--tamas); margin-bottom: 0.8rem; font-family: 'Playfair Display', serif; }
+        .vidya-card p { font-size: 0.93rem; color: #555; }
+        .form-section { background: #f8f4ea; padding: 1.5rem; border-radius: 12px; margin-top: 2rem; }
+        .form-section h3 { font-family: 'Playfair Display', serif; color: var(--tamas); margin-bottom: 1rem; }
+
+        /* Widget traduction */
+        #google_translate_element { display: inline-block; margin-left: 1rem; }
+        .goog-te-banner-frame.skiptranslate { display: none !important; }
+        body { top: 0 !important; }
+        .goog-logo-link { display: none !important; }
+        .goog-te-gadget { font-family: 'Lato', sans-serif; color: #333; }
+        .goog-te-gadget select { padding: 0.2rem; border-radius: 6px; border: 1px solid var(--border); }
+
+        @media (max-width: 700px) {
+            .result-grid { grid-template-columns: 1fr; }
+            .discovery-grid { grid-template-columns: 1fr; }
+            .user-area { position: static; justify-content: center; margin-top: 0.8rem; }
+            .cart-badge { position: static; margin: 0.5rem auto 0; width: fit-content; }
+            header { padding-bottom: 1rem; }
+        }
+    </style>
+</head>
+<body>
+<header>
+    <div class="cart-badge" id="cart-badge" title="Panier">🛒 <span id="cart-count">0</span></div>
+    <h1>🌿 Collegevarnasrama 🇹🇬</h1>
+    <p>Découvrir le Bhakti Yoga • Connaître son Varna • Vivre en communauté • Boutique • Formations • Participer</p>
+    <div class="user-area" id="user-area">
+        <!-- Widget Google Traduction -->
+        <div id="google_translate_element"></div>
+    </div>
+</header>
+
+<nav>
+    <button id="tab-discovery" class="tab-link">📖 Découverte</button>
+    <button id="tab-questionnaire" class="tab-link">🧘 Questionnaire</button>
+    <button id="tab-community" class="tab-link">🏡 Communautés</button>
+    <button id="tab-shop" class="tab-link">🛍️ Boutique</button>
+    <button id="tab-profile" class="tab-link">👤 Profil</button>
+    <button id="tab-formations" class="tab-link">📚 Formations</button>
+    <button id="tab-participate" class="tab-link">🤝 Participer</button>
+    <div style="display:flex; align-items:center; gap:0.5rem;">
+        <span style="font-size:0.9rem;">🌐</span>
+        <select id="lang-select" style="padding:0.3rem; border-radius:6px; border:1px solid var(--border);">
+            <option value="fr">Français</option>
+            <option value="en">English</option>
+        </select>
+    </div>
+</nav>
+
+<div class="container">
+    <!-- DÉCOUVERTE -->
+    <section id="discovery-section" class="card hidden">
+        <h2>✨ Qu'est-ce que le Bhakti Yoga ?</h2>
+        <div class="discovery-grid">
+            <div class="discovery-block">
+                <h3>La voie de la dévotion</h3>
+                <p>Le <strong>Bhakti Yoga</strong> est l'une des quatre grandes voies du Yoga. Il s'agit de la voie de l'amour et de la dévotion envers Dieu. Accessible à tous, il est considéré comme le chemin le plus direct à l'âge actuel.</p>
+                <p><em>Bhakti</em> signifie "participation", "dévotion" ou "amour pur". Le pratiquant (bhakta) cultive une relation personnelle avec la Personne Suprême à travers neuf processus.</p>
+            </div>
+            <div class="discovery-block">
+                <h3>Les 9 processus du Bhakti</h3>
+                <p>1. <strong>Écouter</strong> (Shravanam) – récits sur Krishna<br>
+                2. <strong>Chanter</strong> (Kirtanam) – glorifier ses noms<br>
+                3. <strong>Se souvenir</strong> (Vishnu Smaranam)<br>
+                4. <strong>Servir les pieds du Seigneur</strong> (Pada Sevanam)<br>
+                5. <strong>Adorer</strong> (Archanam) – murti-puja<br>
+                6. <strong>Prier</strong> (Vandanam)<br>
+                7. <strong>Servir en tant que serviteur</strong> (Dasyam)<br>
+                8. <strong>Amitié</strong> (Sakhyam)<br>
+                9. <strong>Tout offrir</strong> (Atma-nivedanam)</p>
+            </div>
+        </div>
+        <h2>📽️ Introduction vidéo</h2>
+        <div class="video-wrapper">
+            <iframe src="https://www.youtube.com/embed/p5dKYoQBwHk?si=-cWjig0aCjrECzOY"
+                title="Introduction au Bhakti Yoga"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen></iframe>
+        </div>
+        <h2>📚 Cours de Bhakti Yoga</h2>
+        <div class="accordion">
+            <div class="accordion-item">
+                <button class="accordion-btn">1. Introduction à la Bhagavad-gita</button>
+                <div class="accordion-content">
+                    <p>La <strong>Bhagavad-gita</strong> est l'une des Écritures les plus importantes. Ce dialogue entre Arjuna et Krishna expose les fondements de la philosophie védique : Karma Yoga, Jnana Yoga et Bhakti Yoga.</p>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <button class="accordion-btn">2. Le Maha-Mantra</button>
+                <div class="accordion-content">
+                    <p>Le <strong>Maha-Mantra</strong> : <em>Hare Krishna Hare Krishna, Krishna Krishna Hare Hare, Hare Rama Hare Rama, Rama Rama Hare Hare</em>.</p>
+                    <p>La pratique du <strong>japa</strong> (récitation sur un mala) est au cœur de la sadhana. Les dévots s'engagent à réciter 16 rondes quotidiennement.</p>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <button class="accordion-btn">3. Vivre en communauté – Le Varnashrama</button>
+                <div class="accordion-content">
+                    <p>Le <strong>Varnashrama Dharma</strong> organise la société en quatre <em>varnas</em> (fonctions) et quatre <em>ashrams</em> (étapes de vie).</p>
+                    <p>• <strong>Brahmana</strong> : enseignants, prêtres, conseillers<br>
+                    • <strong>Kshatriya</strong> : dirigeants, protecteurs<br>
+                    • <strong>Vaishya</strong> : agriculteurs, commerçants<br>
+                    • <strong>Shudra</strong> : artisans, serviteurs</p>
+                </div>
+            </div>
+        </div>
+        <h2>🎧 Méditation sonore – Maha-Mantra</h2>
+        <audio controls style="width:100%; margin:1rem 0;">
+            <source src="https://archive.org/download/HareKrishnaMahaMantra/HareKrishnaMahaMantra.mp3" type="audio/mpeg">
+            Votre navigateur ne supporte pas l'audio.
+        </audio>
+        <div style="text-align:center; margin-top:2rem;">
+            <button class="btn-primary" id="start-quiz-btn">🧘 Découvrir mon Varna →</button>
+        </div>
+    </section>
+
+    <!-- QUESTIONNAIRE -->
+    <section id="questionnaire-section" class="card hidden">
+        <h2>🧘 Questionnaire Varna</h2>
+        <p style="margin-bottom:1.5rem; color:#666;">Répondez honnêtement. Chaque Varna est noble à sa façon.</p>
+        <div id="quiz-container">
+            <div class="progress-wrap">
+                <div class="progress"><div class="progress-bar" id="progress-bar" style="width:0%"></div></div>
+                <p id="question-counter">Question 1 / 7</p>
+            </div>
+            <div id="question-text" class="question-box"></div>
+            <div class="answers" id="answers-container"></div>
+        </div>
+        <div id="result-container" class="hidden">
+            <div class="dominant-varna" id="dominant-varna-block"></div>
+            <div class="result-grid">
+                <div><canvas id="radar-chart" width="300" height="300"></canvas></div>
+                <div class="varna-explanations" id="varna-explanations"></div>
+            </div>
+            <div style="display:flex; gap:1rem; flex-wrap:wrap; margin-top:1rem;">
+                <button class="btn-primary" id="restart-quiz">🔄 Refaire le questionnaire</button>
+                <button class="btn-primary" id="see-communities-btn" style="background:#5a5e7a;">🏡 Voir les communautés compatibles</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- COMMUNAUTÉS -->
+    <section id="community-section" class="card hidden">
+        <h2>🏡 Communautés rurales Bhakti</h2>
+        <p style="margin-bottom:1.5rem; color:#666;">Trouvez la communauté alignée avec votre profil Varna. <span id="profile-hint"></span></p>
+        <div id="community-list-container" class="community-list"></div>
+        <div style="margin-top:2rem;">
+            <button id="show-add-community" class="btn-primary">➕ Ajouter une communauté</button>
+            <div id="add-community-form" class="hidden form-inline">
+                <h4>Nouvelle communauté</h4>
+                <div class="form-group"><label>Nom de la communauté *</label><input type="text" id="comm-name" placeholder="Ex: Ferme de Govinda"></div>
+                <div class="form-group"><label>Localisation *</label><input type="text" id="comm-location" placeholder="Togo, Lomé, Notsè..."></div>
+                <div class="form-group"><label>Description</label><textarea id="comm-desc" rows="3" placeholder="groupe de dévots et de personnes enthousiastes..."></textarea></div>
+                <div class="form-group">
+                    <label>Besoins en profils Varna (1 = faible, 5 = fort)</label>
+                    <div class="needs-row">
+                        <div class="need-field"><label>Brahmana</label><input type="number" id="need-b" min="1" max="5" value="3"></div>
+                        <div class="need-field"><label>Kshatriya</label><input type="number" id="need-k" min="1" max="5" value="3"></div>
+                        <div class="need-field"><label>Vaishya</label><input type="number" id="need-v" min="1" max="5" value="3"></div>
+                        <div class="need-field"><label>Shudra</label><input type="number" id="need-s" min="1" max="5" value="3"></div>
+                    </div>
+                </div>
+                <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+                    <button id="submit-community" class="btn-primary">✅ Enregistrer</button>
+                    <button id="cancel-community" class="btn-secondary">Annuler</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- BOUTIQUE -->
+    <section id="shop-section" class="card hidden">
+        <h2>🛍️ Boutique Bhakti</h2>
+        <p style="margin-bottom:1.5rem; color:#666;">Des articles pour enrichir votre pratique quotidienne. (1 EUR ≈ 655.96 FCFA)</p>
+        <div class="product-grid" id="product-grid"></div>
+        <div style="margin-top:2rem; text-align:right;">
+            <button class="btn-primary" id="view-cart-btn">🛒 Voir le panier (<span id="cart-btn-count">0</span>)</button>
+        </div>
+    </section>
+
+    <!-- PROFIL -->
+    <section id="profile-section" class="card hidden">
+        <h2>👤 Mon Profil</h2>
+        <div id="profile-content"></div>
+    </section>
+
+    <!-- FORMATIONS -->
+    <section id="formations-section" class="card hidden">
+        <h2>📚 Formations védiques – Selon votre Varna</h2>
+        <p>Découvrez les <strong>quatre sciences védiques</strong> (Caturs Vidya) et inscrivez-vous aux formations adaptées à votre nature. Pour les enfants, nous proposons un <strong>Gurukul</strong> traditionnel.</p>
+        <h3>🔍 Caturs Vidya – Les Quatre Sciences</h3>
+        <div class="formations-grid">
+            <div class="vidya-card">
+                <h3>📖 Ānvīkṣikī (Philosophie & Logique)</h3>
+                <p>Étude des Upanishads, du Vedanta, du Sankhya et du Nyaya. Développe la sagesse, la discrimination et la vision spirituelle. Recommandé pour <strong>Brahmanas</strong>.</p>
+            </div>
+            <div class="vidya-card">
+                <h3>🔥 Trayī (Les Trois Vedas)</h3>
+                <p>Rituels, mantras, yajnas et devoir religieux. Apprentissage des hymnes védiques, de la prononciation et des cérémonies. Pour <strong>Brahmanas</strong> et <strong>Kshatriyas</strong>.</p>
+            </div>
+            <div class="vidya-card">
+                <h3>🌾 Vārtā (Économie & Agriculture)</h3>
+                <p>Commerce, agriculture, élevage, gestion des ressources. Enseigne la prospérité juste selon le dharma. Adapté aux <strong>Vaishyas</strong>.</p>
+            </div>
+            <div class="vidya-card">
+                <h3>⚖️ Daṇḍanīti (Science Politique)</h3>
+                <p>Administration, justice, protection sociale, leadership. Art de gouverner selon les principes védiques. Pour <strong>Kshatriyas</strong> et futurs dirigeants.</p>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3>👨‍🎓 Inscription à une formation (Adultes)</h3>
+            <p id="varna-suggestion" style="margin-bottom:1rem; color:var(--accent); font-style:italic;"></p>
+            <div class="form-group"><label>Nom complet *</label><input type="text" id="form-adulte-nom" placeholder="Votre nom"></div>
+            <div class="form-group"><label>Email *</label><input type="email" id="form-adulte-email" placeholder="votre@email.fr"></div>
+            <div class="form-group">
+                <label>Votre Varna dominant</label>
+                <select id="form-adulte-varna">
+                    <option value="">-- Choisissez --</option>
+                    <option value="brahmana">Brahmana</option>
+                    <option value="kshatriya">Kshatriya</option>
+                    <option value="vaishya">Vaishya</option>
+                    <option value="shudra">Shudra</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Science(s) souhaitée(s) *</label>
+                <select id="form-adulte-science" multiple style="height:auto; padding:0.5rem;">
+                    <option value="anvikshiki">Ānvīkṣikī (Philosophie)</option>
+                    <option value="trayi">Trayī (Rituels)</option>
+                    <option value="varta">Vārtā (Économie)</option>
+                    <option value="dandaniti">Daṇḍanīti (Politique)</option>
+                </select>
+                <small>Maintenez Ctrl (Cmd) pour sélectionner plusieurs sciences.</small>
+            </div>
+            <div class="form-group"><label>Message (motivations, disponibilités)</label><textarea id="form-adulte-message" rows="3"></textarea></div>
+            <button class="btn-primary" id="submit-formation-adulte">S'inscrire</button>
+            <p id="form-adulte-success" style="color:green; margin-top:0.5rem;"></p>
+        </div>
+
+        <div class="form-section" style="margin-top:2rem;">
+            <h3>🧒 Inscription au Gurukul (Garçons)</h3>
+            <div class="form-group"><label>Nom de l'enfant *</label><input type="text" id="gurukul-nom-enfant" placeholder="Nom complet"></div>
+            <div class="form-group"><label>Âge *</label><input type="number" id="gurukul-age" min="5" max="18" placeholder="Âge"></div>
+            <div class="form-group"><label>Nom du parent / tuteur *</label><input type="text" id="gurukul-parent" placeholder="Votre nom"></div>
+            <div class="form-group"><label>Email *</label><input type="email" id="gurukul-email" placeholder="votre@email.fr"></div>
+            <div class="form-group"><label>Message (niveau, attentes)</label><textarea id="gurukul-message" rows="3"></textarea></div>
+            <button class="btn-primary" id="submit-gurukul">Inscrire l'enfant</button>
+            <p id="gurukul-success" style="color:green; margin-top:0.5rem;"></p>
+        </div>
+    </section>
+
+    <!-- PARTICIPER -->
+    <section id="participate-section" class="card hidden">
+        <h2>🤝 Participez au projet Collegevarnasrama</h2>
+        <p style="margin-bottom:1.5rem;">Rejoignez notre mission de développement spirituel et rural au Togo, en Afrique et dans le monde. Chacun peut contribuer selon son varna.</p>
+
+        <!-- Objectif de collecte -->
+        <div style="background: #f0f8f4; padding: 1.5rem; border-radius: 16px; margin-bottom: 2rem; text-align: center;">
+            <h3>🎯 Objectif de collecte</h3>
+            <p style="font-size: 1.2rem;">Montant sollicité : <strong>5 000 €</strong></p>
+            <div style="width: 100%; background: #e9e4d8; height: 12px; border-radius: 6px; margin: 1rem 0;">
+                <div id="progress-bar-donations" style="height: 100%; background: var(--accent); border-radius: 6px; width: 0%; transition: width 0.5s;"></div>
+            </div>
+            <p style="font-size: 1.5rem; font-weight: bold; color: var(--tamas);" id="collected-amount">0 €</p>
+            <p style="color: #555;">déjà collectés grâce à nos donateurs</p>
+        </div>
+
+        <!-- Liste des donateurs -->
+        <div style="background: #fffdf7; padding: 1.5rem; border-radius: 16px; margin-bottom: 2rem;">
+            <h3>❤️ Ils nous font déjà confiance</h3>
+            <div id="donors-list" style="max-height: 250px; overflow-y: auto; margin-top: 1rem;">
+                <p style="color: #888;">Chargement...</p>
+            </div>
+        </div>
+
+        <!-- Promesse de don -->
+        <div style="margin-top:1.5rem; text-align:left; background:#f8f4ea; padding:1rem; border-radius:12px; margin-bottom: 2rem;">
+            <h4>💬 Faire une promesse de don</h4>
+            <div class="form-group"><label>Votre nom</label><input type="text" id="donor-name" placeholder="Votre nom"></div>
+            <div class="form-group"><label>Montant (€)</label><input type="number" id="donor-amount" min="1" step="any" placeholder="Ex: 20"></div>
+            <div class="form-group"><label>Message (optionnel)</label><input type="text" id="donor-message" placeholder="Hare Krishna !"></div>
+            <button class="btn-primary" id="submit-donation">Je promets de donner</button>
+            <p style="margin-top:0.5rem; font-size:0.85rem;">Après soumission, veuillez effectuer le paiement via YAS Togo au +228 92 17 05 30.</p>
+        </div>
+
+        <!-- Rôles -->
+        <h3>💡 Comment participer ?</h3>
+        <div class="roles-grid">
+            <div class="role-card"><h3>🙏 Bénévole / Sevaka</h3><p>Offrez votre temps : agriculture, construction, enseignement, cuisine, communication web.</p></div>
+            <div class="role-card"><h3>📚 Enseignant / Brahmana</h3><p>Vous connaissez les Écritures, le sanskrit, le chant dévotionnel. Animez des cours, ateliers ou retraites.</p></div>
+            <div class="role-card"><h3>🌾 Agriculteur / Producteur</h3><p>Expert en agriculture durable, élevage, permaculture. Aidez-nous à développer des fermes autonomes.</p></div>
+            <div class="role-card"><h3>💰 Donateur</h3><p>Votre soutien financier permet d'acheter des terres, du matériel, des livres. Chaque euro est une graine de dévotion.</p></div>
+        </div>
+
+        <!-- Formulaire d'inscription participation -->
+        <div style="background:#f8f4ea; padding:1.5rem; border-radius:12px; margin-top:2rem;">
+            <h3>📝 Formulaire d'inscription – Je souhaite participer</h3>
+            <div class="form-group"><label>Nom complet *</label><input type="text" id="part-name" placeholder="Votre nom" required></div>
+            <div class="form-group"><label>Email *</label><input type="email" id="part-email" placeholder="votre@email.fr" required></div>
+            <div class="form-group"><label>Rôle(s) envisagé(s)</label><select id="part-role" multiple style="height:auto; padding:0.5rem;"><option value="benevole">Bénévole</option><option value="enseignant">Enseignant</option><option value="agriculteur">Agriculteur</option><option value="donateur">Donateur</option><option value="autre">Autre</option></select></div>
+            <div class="form-group"><label>Message</label><textarea id="part-message" rows="3"></textarea></div>
+            <button class="btn-primary" id="submit-participation">Envoyer ma candidature</button>
+            <p id="part-success" style="color:green; margin-top:0.5rem;"></p>
+        </div>
+
+        <!-- Contribution YAS Togo -->
+        <div style="margin-top:2rem;">
+            <h3>💸 Contribution financière (YAS Togo / Mobile Money)</h3>
+            <div class="payment-instructions">
+                <p>Envoyez votre don via <strong>YAS Togo</strong> au numéro :</p>
+                <p style="font-size:1.8rem; font-weight:bold; color:var(--tamas);">+228 92 17 05 30</p>
+                <p>Ou scannez ce QR code :</p>
+                <div class="qr-code-container"><img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=YAS+Togo%3A+Don+pour+Collegevarnasrama+au+%2B22892170530" alt="QR Code YAS Togo"></div>
+                <p style="margin-top:1rem;"><small>Après envoi, merci de nous informer par message pour un reçu.</small></p>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- MODALS -->
+<div id="auth-modal" class="modal hidden">
+    <div class="modal-content">
+        <span class="close-modal" data-close="auth-modal">&times;</span>
+        <h2 id="auth-title">Connexion</h2>
+        <div class="form-group"><label>Email</label><input type="email" id="auth-email"></div>
+        <div class="form-group"><label>Mot de passe</label><input type="password" id="auth-password"></div>
+        <div class="form-group hidden" id="auth-name-group"><label>Nom</label><input type="text" id="auth-name"></div>
+        <p id="auth-error"></p>
+        <button id="auth-action-btn" class="btn-primary" style="width:100%; margin-bottom:1rem;">Se connecter</button>
+        <p style="text-align:center; font-size:0.9rem;"><span class="auth-link" id="switch-auth-mode">Pas encore de compte ? S'inscrire</span></p>
+        <hr style="margin:1.2rem 0; border-color:var(--border);">
+        <button class="btn-secondary" style="width:100%;" data-close="auth-modal">Continuer sans se connecter</button>
+    </div>
+</div>
+
+<div id="cart-modal" class="modal hidden">
+    <div class="modal-content" style="max-width:500px;">
+        <span class="close-modal" data-close="cart-modal">&times;</span>
+        <h2>🛒 Votre Panier</h2>
+        <div id="cart-items-container"></div>
+        <p class="cart-total-line">
+            Total : <strong id="cart-total">0.00</strong> €<br>
+            <span style="font-size:0.9rem;">(<span id="cart-total-fcfa">0</span> FCFA)</span>
+        </p>
+        <div style="display:flex; gap:1rem; margin-top:1rem; flex-wrap:wrap;">
+            <button class="btn-primary" id="checkout-stripe" style="flex:1; background:#635bff;">💳 Payer par Stripe</button>
+            <button class="btn-primary" id="checkout-yas" style="flex:1; background:#f2cc8f; color:#3d405b; border:2px solid #3d405b;">📱 Payer avec YAS Togo</button>
+        </div>
+        <div id="yas-payment-section" style="display:none; margin-top:1.5rem; padding:1rem; background:#f0f8f4; border-radius:12px; text-align:center;">
+            <h4 style="margin-bottom:0.5rem;">💸 Envoyer <span id="yas-total"></span> € (<span id="yas-total-fcfa"></span> FCFA) au numéro :</h4>
+            <p style="font-size:1.5rem; font-weight:bold; color:#3d405b;">+228 92 17 05 30</p>
+            <p>Ou scannez :</p>
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=YAS+Togo%3A+Collegevarnasrama+%2B22892170530" alt="QR Code YAS" style="max-width:160px; border-radius:8px;">
+            <p style="font-size:0.85rem; margin:0.8rem 0;">Après envoi, cliquez sur confirmer :</p>
+            <button class="btn-primary" id="confirm-yas-payment" style="background:#3d405b;">✅ J'ai envoyé le paiement</button>
+        </div>
+        <p style="font-size:0.8rem; color:#aaa; margin-top:0.5rem; text-align:center;">Paiement sécurisé. Vos informations ne sont pas stockées.</p>
+    </div>
+</div>
+
+<div id="chat-modal" class="modal hidden">
+    <div class="modal-content" style="max-width:600px;">
+        <span class="close-modal" data-close="chat-modal">&times;</span>
+        <h2>💬 <span id="chat-community-name"></span></h2>
+        <div id="chat-messages" class="chat-messages"></div>
+        <div class="form-group"><textarea id="chat-input" rows="2" placeholder="Votre message..."></textarea></div>
+        <button class="btn-primary" id="send-chat">Envoyer</button>
+    </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ==================== CONFIGURATION FIREBASE (à remplacer) ====================
+const firebaseConfig = {
+  apiKey: "VOTRE_API_KEY",
+  authDomain: "VOTRE_PROJET.firebaseapp.com",
+  projectId: "VOTRE_PROJET",
+  storageBucket: "VOTRE_PROJET.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456789:web:abcdef..."
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+const storage = firebase.storage();
+
+// ==================== TAUX DE CHANGE ====================
+const EXCHANGE_RATE = 655.957; // 1 EUR en FCFA
+
+// ==================== VARIABLES GLOBALES ====================
+let currentUser = null;
+let currentUserProfile = null;
+let cart = [];
+let unsubMessages = null;
+const products = [
+    { id:1, name:"Mala en Tulsi", emoji:"📿", desc:"108 perles de bois de tulsi pour le japa quotidien.", price:12.00 },
+    { id:2, name:"Bhagavad-gita", emoji:"📖", desc:"Édition commentée par Srila Prabhupada. 900 pages.", price:18.50 },
+    { id:3, name:"Carnet de Sadhana", emoji:"📓", desc:"Journal pour suivre vos rondes et votre pratique.", price:7.00 },
+    { id:4, name:"Encens Santal", emoji:"🪔", desc:"Bois de santal naturel, 40 bâtons. Parfum de temple.", price:5.50 },
+    { id:5, name:"T-shirt Hare Krishna", emoji:"👕", desc:"Coton bio certifié. Mantra imprimé avec encre végétale.", price:22.00 },
+    { id:6, name:"Poster Maha-Mantra", emoji:"🖼️", desc:"Impression artistique A3 sur papier recyclé.", price:9.90 }
+];
+
+// ==================== UTILITAIRES ====================
+function showToast(msg, duration=2500) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), duration);
+}
+function formatFCFA(amountEUR) {
+    return (amountEUR * EXCHANGE_RATE).toFixed(0) + ' FCFA';
+}
+
+// ==================== MODALES ====================
+function openModal(id) {
+    document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
+    document.getElementById(id).classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+    document.getElementById(id).classList.add('hidden');
+    document.body.style.overflow = '';
+}
+document.addEventListener('click', function(e) {
+    const closeBtn = e.target.closest('[data-close]');
+    if (closeBtn) { closeModal(closeBtn.getAttribute('data-close')); return; }
+    if (e.target.classList.contains('modal')) { closeModal(e.target.id); }
+});
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal:not(.hidden)').forEach(m => closeModal(m.id));
+    }
+});
+
+// ==================== AUTHENTIFICATION ====================
+let authMode = 'login';
+function setAuthMode(mode) {
+    authMode = mode;
+    if (mode === 'login') {
+        document.getElementById('auth-title').textContent = 'Connexion';
+        document.getElementById('auth-name-group').classList.add('hidden');
+        document.getElementById('auth-action-btn').textContent = 'Se connecter';
+        document.getElementById('switch-auth-mode').textContent = "Pas encore de compte ? S'inscrire";
+    } else {
+        document.getElementById('auth-title').textContent = 'Créer un compte';
+        document.getElementById('auth-name-group').classList.remove('hidden');
+        document.getElementById('auth-action-btn').textContent = "S'inscrire";
+        document.getElementById('switch-auth-mode').textContent = 'Déjà un compte ? Se connecter';
+    }
+    document.getElementById('auth-error').textContent = '';
+}
+document.getElementById('switch-auth-mode').addEventListener('click', () => setAuthMode(authMode === 'login' ? 'register' : 'login'));
+document.getElementById('auth-action-btn').addEventListener('click', async () => {
+    const email = document.getElementById('auth-email').value.trim();
+    const password = document.getElementById('auth-password').value.trim();
+    const name = document.getElementById('auth-name').value.trim();
+    const errEl = document.getElementById('auth-error');
+    if (!email || !password) { errEl.textContent = 'Email et mot de passe requis.'; return; }
+    if (!email.includes('@')) { errEl.textContent = 'Email invalide.'; return; }
+    if (password.length < 4) { errEl.textContent = 'Mot de passe trop court (min. 4).'; return; }
+    try {
+        if (authMode === 'register') {
+            if (!name) { errEl.textContent = 'Nom requis.'; return; }
+            const userCred = await auth.createUserWithEmailAndPassword(email, password);
+            await db.collection('users').doc(userCred.user.uid).set({ name, email, varnaProfile: null, avatarURL: null });
+            showToast(`Bienvenue, ${name} !`);
+        } else {
+            await auth.signInWithEmailAndPassword(email, password);
+            showToast('Connexion réussie.');
+        }
+        closeModal('auth-modal');
+    } catch (error) { errEl.textContent = error.message; }
+});
+auth.onAuthStateChanged(async user => {
+    if (user) {
+        currentUser = user;
+        const doc = await db.collection('users').doc(user.uid).get();
+        currentUserProfile = doc.exists ? doc.data() : null;
+        if (!currentUserProfile) {
+            currentUserProfile = { name: user.email, email: user.email, varnaProfile: null, avatarURL: null };
+            await db.collection('users').doc(user.uid).set(currentUserProfile);
+        }
+        loadCartFromFirestore();
+    } else {
+        currentUser = null; currentUserProfile = null; cart = []; saveCartLocal();
+    }
+    renderUserArea();
+    updateCartBadge();
+    renderProfileIfActive();
+    renderCommunitiesIfActive();
+    if (!document.getElementById('formations-section').classList.contains('hidden')) renderFormations();
+});
+function renderUserArea() {
+    const area = document.getElementById('user-area');
+    if (currentUser && currentUserProfile) {
+        area.innerHTML = `<span>🙏 ${currentUserProfile.name}</span><button id="btn-logout">Déconnexion</button>`;
+        document.getElementById('btn-logout').addEventListener('click', async () => { await auth.signOut(); showToast('Déconnecté.'); });
+    } else {
+        area.innerHTML = `<button id="btn-login">Se connecter / S'inscrire</button>`;
+        document.getElementById('btn-login').addEventListener('click', () => { setAuthMode('login'); openModal('auth-modal'); });
+    }
+}
+
+// ==================== NAVIGATION ====================
+const TABS = ['discovery', 'questionnaire', 'community', 'shop', 'profile', 'formations', 'participate'];
+function switchTab(name) {
+    TABS.forEach(t => {
+        document.getElementById(`${t}-section`).classList.add('hidden');
+        document.getElementById(`tab-${t}`).classList.remove('active');
+    });
+    document.getElementById(`${name}-section`).classList.remove('hidden');
+    document.getElementById(`tab-${name}`).classList.add('active');
+    if (name === 'community') renderCommunities();
+    if (name === 'shop') renderShop();
+    if (name === 'profile') renderProfile();
+    if (name === 'formations') renderFormations();
+    if (name === 'participate') { /* la collecte écoute déjà */ }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+TABS.forEach(t => document.getElementById(`tab-${t}`).addEventListener('click', () => switchTab(t)));
+document.getElementById('start-quiz-btn').addEventListener('click', () => switchTab('questionnaire'));
+document.getElementById('see-communities-btn').addEventListener('click', () => switchTab('community'));
+
+// ==================== ACCORDÉON ====================
+document.querySelectorAll('.accordion-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const content = btn.nextElementSibling;
+        const isOpen = content.classList.contains('open');
+        document.querySelectorAll('.accordion-content').forEach(c => c.classList.remove('open'));
+        document.querySelectorAll('.accordion-btn').forEach(b => b.classList.remove('open'));
+        if (!isOpen) { content.classList.add('open'); btn.classList.add('open'); }
+    });
+});
+
+// ==================== QUESTIONNAIRE ====================
+const questions = [
+    { id:1, question:"Face à un conflit dans un groupe, vous avez tendance à :", answers:[
+        { text:"Écouter chacun et chercher un consensus par la sagesse.", weights:{b:5,k:1,v:1,s:1} },
+        { text:"Prendre une décision rapide pour rétablir l'ordre.", weights:{b:1,k:5,v:1,s:1} },
+        { text:"Proposer un arrangement gagnant-gagnant qui préserve les ressources.", weights:{b:1,k:1,v:5,s:1} },
+        { text:"Soutenir la décision du responsable désigné sans faire de vagues.", weights:{b:1,k:1,v:1,s:5} }
+    ]},
+    { id:2, question:"Dans votre travail idéal, qu'est-ce qui vous motive le plus ?", answers:[
+        { text:"Enseigner, transmettre des connaissances et élever les autres.", weights:{b:5,k:1,v:1,s:1} },
+        { text:"Diriger, protéger et organiser pour le bien commun.", weights:{b:1,k:5,v:1,s:1} },
+        { text:"Créer de la prospérité, échanger et gérer des ressources.", weights:{b:1,k:1,v:5,s:1} },
+        { text:"Aider concrètement, fabriquer, entretenir et servir avec dévouement.", weights:{b:1,k:1,v:1,s:5} }
+    ]},
+    { id:3, question:"Votre relation à la spiritualité est plutôt :", answers:[
+        { text:"Étudier les Écritures, méditer et conseiller les autres.", weights:{b:5,k:1,v:1,s:1} },
+        { text:"Défendre les principes spirituels et inspirer par l'exemple courageux.", weights:{b:1,k:5,v:1,s:1} },
+        { text:"Soutenir financièrement les temples et les projets sacrés.", weights:{b:1,k:1,v:5,s:1} },
+        { text:"Nettoyer le temple, préparer les offrandes, servir les dévots.", weights:{b:1,k:1,v:1,s:5} }
+    ]},
+    { id:4, question:"Face à une tâche manuelle répétitive, vous ressentez :", answers:[
+        { text:"Un peu de difficulté, vous préférez réfléchir et analyser.", weights:{b:4,k:2,v:2,s:2} },
+        { text:"De l'impatience, vous préférez déléguer pour agir ailleurs.", weights:{b:2,k:5,v:2,s:1} },
+        { text:"Un intérêt si elle a une finalité productive ou commerciale.", weights:{b:2,k:2,v:5,s:2} },
+        { text:"Une satisfaction profonde, vous aimez travailler de vos mains.", weights:{b:1,k:1,v:2,s:5} }
+    ]},
+    { id:5, question:"Quelle est votre réaction naturelle face à une injustice ?", answers:[
+        { text:"Chercher à éduquer et éclairer les consciences par la connaissance.", weights:{b:5,k:2,v:1,s:1} },
+        { text:"Intervenir immédiatement pour rétablir l'ordre et protéger.", weights:{b:1,k:5,v:1,s:1} },
+        { text:"Trouver une solution pragmatique et équitable pour réparer les torts.", weights:{b:1,k:2,v:5,s:1} },
+        { text:"Soutenir la victime, prier et faire confiance à la justice divine.", weights:{b:1,k:1,v:1,s:5} }
+    ]},
+    { id:6, question:"Dans un projet collectif, vous préférez :", answers:[
+        { text:"Concevoir la vision d'ensemble et partager les connaissances.", weights:{b:5,k:1,v:1,s:1} },
+        { text:"Coordonner l'équipe et prendre les décisions importantes.", weights:{b:1,k:5,v:1,s:1} },
+        { text:"Gérer le budget, les ressources et les échanges avec efficacité.", weights:{b:1,k:1,v:5,s:1} },
+        { text:"Accomplir les tâches concrètes avec soin et application.", weights:{b:1,k:1,v:1,s:5} }
+    ]},
+    { id:7, question:"Quel type de relation au temps vous caractérise ?", answers:[
+        { text:"Vous aimez prendre le temps d'étudier, de réfléchir et de contempler.", weights:{b:5,k:1,v:2,s:1} },
+        { text:"Vous êtes dynamique, aimez l'action et maîtrisez l'urgence.", weights:{b:1,k:5,v:2,s:1} },
+        { text:"Vous optimisez chaque heure pour produire ou créer davantage.", weights:{b:1,k:2,v:5,s:1} },
+        { text:"Vous suivez le rythme naturel des saisons et des besoins concrets.", weights:{b:1,k:1,v:2,s:5} }
+    ]}
+];
+let currentQ = 0, answersGiven = Array(questions.length).fill(null), quizLocked = false;
+const VARNA_INFO = {
+    b: { name:'Brahmana', color:'#3d405b', icon:'📖', desc:'Enseignement, sagesse, conseil spirituel.' },
+    k: { name:'Kshatriya', color:'#e07a5f', icon:'🛡️', desc:'Leadership, protection, courage.' },
+    v: { name:'Vaishya', color:'#c49a2f', icon:'🌾', desc:'Agriculture, commerce, gestion.' },
+    s: { name:'Shudra', color:'#81b29a', icon:'🔨', desc:'Artisanat, service, travail manuel.' }
+};
+function renderQuestion(idx) {
+    if (idx >= questions.length) { calculateAndShowResults(); return; }
+    quizLocked = false;
+    const q = questions[idx];
+    document.getElementById('question-text').innerHTML = `<h3>Question ${q.id} – ${q.question}</h3>`;
+    const ac = document.getElementById('answers-container'); ac.innerHTML = '';
+    q.answers.forEach((ans, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'answer-btn';
+        if (answersGiven[idx] === i) btn.classList.add('selected');
+        btn.textContent = ans.text;
+        btn.addEventListener('click', () => {
+            if (quizLocked) return;
+            quizLocked = true;
+            answersGiven[idx] = i;
+            ac.querySelectorAll('.answer-btn').forEach(b => b.classList.add('disabled'));
+            btn.classList.add('selected');
+            document.getElementById('progress-bar').style.width = `${((idx+1)/questions.length)*100}%`;
+            document.getElementById('question-counter').textContent = `Question ${idx+2} / ${questions.length}`;
+            setTimeout(() => { currentQ = idx+1; renderQuestion(currentQ); }, 500);
+        });
+        ac.appendChild(btn);
+    });
+    document.getElementById('progress-bar').style.width = `${(idx/questions.length)*100}%`;
+    document.getElementById('question-counter').textContent = `Question ${idx+1} / ${questions.length}`;
+}
+async function calculateAndShowResults() {
+    const scores = { b:0, k:0, v:0, s:0 };
+    questions.forEach((q, i) => {
+        const sel = answersGiven[i];
+        if (sel !== null) { const w = q.answers[sel].weights; scores.b += w.b||0; scores.k += w.k||0; scores.v += w.v||0; scores.s += w.s||0; }
+    });
+    const total = scores.b+scores.k+scores.v+scores.s || 1;
+    const profile = { b:Math.round(scores.b/total*100), k:Math.round(scores.k/total*100), v:Math.round(scores.v/total*100), s:Math.round(scores.s/total*100) };
+    const dominant = Object.entries(profile).sort((a,b)=>b[1]-a[1])[0][0];
+    const dv = VARNA_INFO[dominant];
+    if (currentUser) await db.collection('users').doc(currentUser.uid).update({ varnaProfile: profile });
+    localStorage.setItem('cv_varnaProfile', JSON.stringify(profile));
+    document.getElementById('quiz-container').classList.add('hidden');
+    document.getElementById('result-container').classList.remove('hidden');
+    document.getElementById('dominant-varna-block').innerHTML = `<h3>${dv.icon} Votre Varna dominant : ${dv.name}</h3><p>${dv.desc}</p>`;
+    const expl = document.getElementById('varna-explanations');
+    expl.innerHTML = Object.entries(profile).sort((a,b)=>b[1]-a[1]).map(([key,pct])=>{
+        const v = VARNA_INFO[key];
+        const bar = `<div style="height:6px;background:#e9e4d8;border-radius:3px;margin-top:0.4rem;"><div style="height:100%;width:${pct}%;background:${v.color};border-radius:3px;"></div></div>`;
+        return `<p><strong style="color:${v.color}">${v.icon} ${v.name}</strong> – ${pct}%${bar}<small>${v.desc}</small></p>`;
+    }).join('');
+    drawRadar([profile.b, profile.k, profile.v, profile.s]);
+    showToast('Votre profil Varna a été calculé !');
+}
+function drawRadar(data) {
+    const canvas = document.getElementById('radar-chart');
+    const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,300,300);
+    const cx=150,cy=150,r=95, labels=['Brahmana','Kshatriya','Vaishya','Shudra'], colors=['#3d405b','#e07a5f','#c49a2f','#81b29a'];
+    const step=Math.PI*2/4, start=-Math.PI/2;
+    for(let i=0.2;i<=1.01;i+=0.2){ctx.beginPath();for(let j=0;j<=4;j++){const ang=start+j*step;const x=cx+r*i*Math.cos(ang),y=cy+r*i*Math.sin(ang);j===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}ctx.closePath();ctx.strokeStyle=i>0.99?'#c5b99a':'#e0d4bc';ctx.lineWidth=i>0.99?1.5:1;ctx.stroke();}
+    for(let i=0;i<4;i++){const ang=start+i*step;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+r*Math.cos(ang),cy+r*Math.sin(ang));ctx.strokeStyle='#d4c5a9';ctx.stroke();}
+    ctx.font='bold 13px Lato,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    for(let i=0;i<4;i++){const ang=start+i*step;ctx.fillStyle=colors[i];ctx.fillText(labels[i],cx+r*1.22*Math.cos(ang),cy+r*1.22*Math.sin(ang));}
+    ctx.beginPath();for(let i=0;i<4;i++){const ang=start+i*step,val=data[i]/100;const x=cx+r*val*Math.cos(ang),y=cy+r*val*Math.sin(ang);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}ctx.closePath();ctx.fillStyle='rgba(129,178,154,0.25)';ctx.fill();ctx.strokeStyle='#81b29a';ctx.lineWidth=2.5;ctx.stroke();
+    for(let i=0;i<4;i++){const ang=start+i*step,val=data[i]/100;const x=cx+r*val*Math.cos(ang),y=cy+r*val*Math.sin(ang);ctx.beginPath();ctx.arc(x,y,6,0,2*Math.PI);ctx.fillStyle=colors[i];ctx.fill();ctx.strokeStyle='white';ctx.lineWidth=2;ctx.stroke();}
+    ctx.font='bold 11px Lato,sans-serif';
+    for(let i=0;i<4;i++){const ang=start+i*step,val=data[i]/100;if(val<0.1)continue;const x=cx+r*val*0.6*Math.cos(ang),y=cy+r*val*0.6*Math.sin(ang);ctx.fillStyle=colors[i];ctx.fillText(data[i]+'%',x,y);}
+}
+document.getElementById('restart-quiz').addEventListener('click',()=>{
+    currentQ=0;answersGiven=Array(questions.length).fill(null);quizLocked=false;
+    document.getElementById('result-container').classList.add('hidden');
+    document.getElementById('quiz-container').classList.remove('hidden');renderQuestion(0);
+});
+
+// ==================== COMMUNAUTÉS ====================
+const COMM_KEY = 'cv_communities';
+function defaultCommunities() {
+    return [
+        { name:"Ferme de Radha Kund", location:"Occitanie, France", desc:"Production laitière bio, maraîchage, prasadam. 25 dévots.", needs:{v:4,s:3,b:1,k:1} },
+        { name:"Ashram Govardhan", location:"Québec, Canada", desc:"Retraites spirituelles, cours de sanscrit, kirtan.", needs:{b:5,k:3,v:1,s:2} },
+        { name:"Écovillage Bhakti Loka", location:"Auvergne, France", desc:"Village autonome, priorité artisans et agriculteurs.", needs:{s:4,v:4,b:2,k:2} },
+        { name:"Protectorat de Dharma", location:"Suisse romande", desc:"Leadership spirituel, éducation védique.", needs:{k:5,b:4,v:2,s:1} }
+    ];
+}
+function getCommunities() { return JSON.parse(localStorage.getItem(COMM_KEY)) || defaultCommunities(); }
+function saveCommunities(list) { localStorage.setItem(COMM_KEY, JSON.stringify(list)); }
+function getProfile() { return currentUserProfile?.varnaProfile || JSON.parse(localStorage.getItem('cv_varnaProfile')) || null; }
+function computeMatch(profile, needs) {
+    if (!profile) return -1;
+    const keys=['b','k','v','s']; let totalNeeds=0, matched=0;
+    keys.forEach(k=>{ const n=needs[k]||0, p=(profile[k]||0)/20; totalNeeds+=n; matched+=Math.min(n,p); });
+    return totalNeeds?Math.min(5,Math.round((matched/totalNeeds)*5)):0;
+}
+function renderCommunities() {
+    const container = document.getElementById('community-list-container');
+    const communities = getCommunities();
+    const profile = getProfile();
+    if (!profile) {
+        document.getElementById('profile-hint').innerHTML = '<a href="#" id="go-quiz-link" style="color:var(--accent);text-decoration:underline;">Passez le questionnaire</a> pour voir votre compatibilité.';
+        document.getElementById('go-quiz-link')?.addEventListener('click',(e)=>{ e.preventDefault(); switchTab('questionnaire'); });
+    } else {
+        document.getElementById('profile-hint').innerHTML = `Votre profil : <strong>${VARNA_INFO.b.icon}${profile.b}% – ${VARNA_INFO.k.icon}${profile.k}% – ${VARNA_INFO.v.icon}${profile.v}% – ${VARNA_INFO.s.icon}${profile.s}%</strong>`;
+    }
+    const sorted = [...communities].map((c,i)=>({...c,_idx:i,_match:computeMatch(profile,c.needs)}));
+    if (profile) sorted.sort((a,b)=>b._match-a._match);
+    container.innerHTML = sorted.map(comm=>{
+        const stars = comm._match>=0 ? '★'.repeat(comm._match)+'☆'.repeat(5-comm._match) : '';
+        const matchLine = profile ? `<p class="match-stars">${stars} <span class="match-label">(${comm._match}/5)</span></p>` : '<p style="color:#aaa;font-style:italic;">Passez le questionnaire</p>';
+        const needTags = Object.entries(comm.needs).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<span style="background:${VARNA_INFO[k].color}22;color:${VARNA_INFO[k].color};border:1px solid ${VARNA_INFO[k].color}44;padding:0.1rem 0.5rem;border-radius:12px;font-size:0.8rem;font-weight:700;">${VARNA_INFO[k].icon}${v}/5</span>`).join(' ');
+        return `<div class="community-card">
+            <h3>🏡 ${comm.name}</h3><p>📍 ${comm.location}</p><p>${comm.desc}</p>
+            <p style="margin-top:0.5rem;">${needTags}</p>${matchLine}
+            ${currentUser?`<button class="btn-secondary open-chat" data-community="${comm.name}">💬 Discuter</button>`:''}
+        </div>`;
+    }).join('');
+    document.querySelectorAll('.open-chat').forEach(btn=>{
+        btn.addEventListener('click',()=>openChat(btn.getAttribute('data-community')));
+    });
+}
+document.getElementById('show-add-community').addEventListener('click',()=> document.getElementById('add-community-form').classList.toggle('hidden'));
+document.getElementById('cancel-community').addEventListener('click',()=> document.getElementById('add-community-form').classList.add('hidden'));
+document.getElementById('submit-community').addEventListener('click',()=>{
+    const name = document.getElementById('comm-name').value.trim();
+    const location = document.getElementById('comm-location').value.trim();
+    const desc = document.getElementById('comm-desc').value.trim();
+    const needs = { b:Math.min(5,Math.max(1,parseInt(document.getElementById('need-b').value)||3)), k:Math.min(5,Math.max(1,parseInt(document.getElementById('need-k').value)||3)), v:Math.min(5,Math.max(1,parseInt(document.getElementById('need-v').value)||3)), s:Math.min(5,Math.max(1,parseInt(document.getElementById('need-s').value)||3)) };
+    if(!name||!location){ showToast('⚠️ Nom et localisation requis.'); return; }
+    const communities = getCommunities();
+    communities.push({ name, location, desc, needs });
+    saveCommunities(communities);
+    renderCommunities();
+    document.getElementById('add-community-form').classList.add('hidden');
+    ['comm-name','comm-location','comm-desc'].forEach(id=>document.getElementById(id).value='');
+    ['need-b','need-k','need-v','need-s'].forEach(id=>document.getElementById(id).value=3);
+    showToast(`✅ Communauté "${name}" ajoutée !`);
+});
+
+// ==================== MESSAGERIE ====================
+function openChat(communityName) {
+    if (!currentUser) return showToast('Connectez-vous pour discuter.');
+    document.getElementById('chat-community-name').textContent = communityName;
+    openModal('chat-modal');
+    if (unsubMessages) unsubMessages();
+    const messagesRef = db.collection('messages').where('communityId','==',communityName).orderBy('timestamp','asc');
+    unsubMessages = messagesRef.onSnapshot(snapshot=>{
+        const chatDiv = document.getElementById('chat-messages');
+        chatDiv.innerHTML = '';
+        snapshot.forEach(doc=>{
+            const msg = doc.data();
+            chatDiv.innerHTML += `<div class="chat-msg"><strong>${msg.userName}:</strong> ${msg.text}</div>`;
+        });
+        chatDiv.scrollTop = chatDiv.scrollHeight;
+    });
+}
+document.getElementById('send-chat').addEventListener('click',async ()=>{
+    const text = document.getElementById('chat-input').value.trim();
+    if (!text) return;
+    await db.collection('messages').add({
+        communityId: document.getElementById('chat-community-name').textContent,
+        userId: currentUser.uid,
+        userName: currentUserProfile.name,
+        text,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    document.getElementById('chat-input').value = '';
+});
+
+// ==================== BOUTIQUE & PANIER ====================
+function loadCartFromFirestore() {
+    if (!currentUser) return;
+    db.collection('carts').doc(currentUser.uid).collection('items').onSnapshot(snapshot=>{
+        cart = [];
+        snapshot.forEach(doc=>{ cart.push({id:doc.data().productId, qty:doc.data().quantity}); });
+        saveCartLocal();
+        updateCartBadge();
+        if (!document.getElementById('shop-section').classList.contains('hidden')) renderShop();
+    });
+}
+function saveCartToFirestore() {
+    if (!currentUser) return;
+    const batch = db.batch();
+    const itemsRef = db.collection('carts').doc(currentUser.uid).collection('items');
+    itemsRef.get().then(snapshot=>{
+        snapshot.forEach(doc=>batch.delete(doc.ref));
+        cart.forEach(item=>batch.set(itemsRef.doc(item.id.toString()),{productId:item.id,quantity:item.qty}));
+        batch.commit();
+    });
+}
+function saveCartLocal() { localStorage.setItem('cv_cart', JSON.stringify(cart)); }
+function updateCartBadge() {
+    const count = cart.reduce((s,i)=>s+i.qty,0);
+    document.getElementById('cart-count').textContent = count;
+    document.getElementById('cart-btn-count').textContent = count;
+}
+function addToCart(productId) {
+    const existing = cart.find(i=>i.id===productId);
+    if (existing) existing.qty++;
+    else cart.push({id:productId, qty:1});
+    saveCartLocal(); saveCartToFirestore(); updateCartBadge();
+    const badge = document.getElementById('cart-badge');
+    badge.classList.remove('pulse'); void badge.offsetWidth; badge.classList.add('pulse');
+    const p = products.find(p=>p.id===productId);
+    showToast(`${p.emoji} ${p.name} ajouté au panier !`);
+}
+function renderShop() {
+    const grid = document.getElementById('product-grid');
+    grid.innerHTML = products.map(p=>`
+        <div class="product-card">
+            <div class="product-emoji">${p.emoji}</div><h3>${p.name}</h3><p>${p.desc}</p>
+            <p class="product-price">${p.price.toFixed(2)} €</p>
+            <p class="product-price-fcfa">${formatFCFA(p.price)}</p>
+            <button class="btn-primary" data-add="${p.id}">Ajouter au panier</button>
+        </div>`).join('');
+    grid.querySelectorAll('[data-add]').forEach(btn=>{
+        btn.addEventListener('click',()=>addToCart(parseInt(btn.getAttribute('data-add'))));
+    });
+    updateCartBadge();
+}
+function renderCartModal() {
+    const container = document.getElementById('cart-items-container');
+    if (cart.length===0) {
+        container.innerHTML = '<p style="text-align:center;padding:2rem;">Votre panier est vide.</p>';
+        document.getElementById('cart-total').textContent = '0.00';
+        document.getElementById('cart-total-fcfa').textContent = '0';
+        document.getElementById('yas-payment-section').style.display = 'none';
+        return;
+    }
+    container.innerHTML = cart.map(item=>{
+        const p = products.find(pr=>pr.id===item.id);
+        const lineTotalEUR = p.price * item.qty;
+        return `<div class="cart-item">
+            <div>
+                <span>${p.emoji} ${p.name} x${item.qty}</span><br>
+                <small>${lineTotalEUR.toFixed(2)} € (${formatFCFA(lineTotalEUR)})</small>
+            </div>
+            <div class="cart-controls">
+                <button class="cart-qty-btn" data-id="${item.id}" data-d="-1">−</button>
+                <span>${item.qty}</span>
+                <button class="cart-qty-btn" data-id="${item.id}" data-d="1">+</button>
+                <button class="btn-danger" data-del="${item.id}">✕</button>
+            </div>
+        </div>`;
+    }).join('');
+    const totalEUR = cart.reduce((sum,item)=>{const p=products.find(pr=>pr.id===item.id);return sum+(p?p.price*item.qty:0);},0);
+    const totalFCFA = totalEUR * EXCHANGE_RATE;
+    document.getElementById('cart-total').textContent = totalEUR.toFixed(2);
+    document.getElementById('cart-total-fcfa').textContent = totalFCFA.toFixed(0);
+    document.getElementById('yas-total').textContent = totalEUR.toFixed(2);
+    document.getElementById('yas-total-fcfa').textContent = totalFCFA.toFixed(0);
+    document.getElementById('yas-payment-section').style.display = 'none';
+    container.querySelectorAll('.cart-qty-btn').forEach(btn=>{
+        btn.addEventListener('click',()=>{
+            const id = parseInt(btn.getAttribute('data-id'));
+            const d = parseInt(btn.getAttribute('data-d'));
+            const item = cart.find(i=>i.id===id);
+            if(item){item.qty+=d;if(item.qty<=0)cart=cart.filter(i=>i.id!==id);}
+            saveCartLocal();saveCartToFirestore();renderCartModal();
+        });
+    });
+    container.querySelectorAll('[data-del]').forEach(btn=>{
+        btn.addEventListener('click',()=>{
+            cart = cart.filter(i=>i.id!==parseInt(btn.getAttribute('data-del')));
+            saveCartLocal();saveCartToFirestore();renderCartModal();
+        });
+    });
+}
+document.getElementById('view-cart-btn').addEventListener('click',()=>{renderCartModal();openModal('cart-modal');});
+document.getElementById('cart-badge').addEventListener('click',()=>{renderCartModal();openModal('cart-modal');});
+
+// Paiement Stripe
+document.getElementById('checkout-stripe').addEventListener('click', async ()=>{
+    if (!currentUser) return showToast('Connectez-vous pour payer.');
+    if (cart.length===0) return showToast('Panier vide.');
+    const STRIPE_FUNCTION_URL = 'https://VOTRE-REGION-VOTRE-PROJET.cloudfunctions.net/createCheckoutSession';
+    try {
+        const response = await fetch(STRIPE_FUNCTION_URL, {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({cart, userId:currentUser.uid})
+        });
+        const session = await response.json();
+        const stripe = Stripe('pk_test_VOTRE_CLE_PUBLIQUE_STRIPE');
+        const {error} = await stripe.redirectToCheckout({sessionId:session.id});
+        if(error) showToast(error.message);
+    } catch(e) { showToast('Service de paiement Stripe indisponible.'); }
+});
+
+// Paiement YAS Togo
+document.getElementById('checkout-yas').addEventListener('click', ()=>{
+    if (cart.length===0) return showToast('Panier vide.');
+    const totalEUR = cart.reduce((sum,item)=>{const p=products.find(pr=>pr.id===item.id);return sum+(p?p.price*item.qty:0);},0);
+    const totalFCFA = totalEUR * EXCHANGE_RATE;
+    document.getElementById('yas-total').textContent = totalEUR.toFixed(2);
+    document.getElementById('yas-total-fcfa').textContent = totalFCFA.toFixed(0);
+    document.getElementById('yas-payment-section').style.display = 'block';
+});
+document.getElementById('confirm-yas-payment').addEventListener('click', async ()=>{
+    if (!currentUser) return showToast('Connectez-vous pour finaliser.');
+    if (cart.length===0) return showToast('Panier vide.');
+    const totalEUR = cart.reduce((sum,item)=>{const p=products.find(pr=>pr.id===item.id);return sum+(p?p.price*item.qty:0);},0);
+    const items = cart.map(item=>{
+        const p = products.find(pr=>pr.id===item.id);
+        return { name: p.name, quantity: item.qty, price: p.price };
+    });
+    try {
+        await db.collection('orders').add({
+            userId: currentUser.uid,
+            userName: currentUserProfile.name,
+            items,
+            total: totalEUR,
+            paymentMethod: 'YAS Togo',
+            status: 'pending',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        cart = [];
+        saveCartLocal();
+        if (currentUser) {
+            const batch = db.batch();
+            const itemsRef = db.collection('carts').doc(currentUser.uid).collection('items');
+            const snapshot = await itemsRef.get();
+            snapshot.forEach(doc=>batch.delete(doc.ref));
+            await batch.commit();
+        }
+        renderCartModal();
+        updateCartBadge();
+        document.getElementById('yas-payment-section').style.display = 'none';
+        showToast('✅ Paiement YAS déclaré. Nous vérifierons et validerons votre commande. Merci !');
+    } catch(e) { showToast('Erreur lors de l\'enregistrement : '+e.message); }
+});
+
+// ==================== PROFIL ====================
+function renderProfile() {
+    if (!currentUser || !currentUserProfile) {
+        document.getElementById('profile-content').innerHTML = '<p>Connectez-vous pour accéder à votre profil.</p>';
+        return;
+    }
+    const avatarHTML = currentUserProfile.avatarURL ? `<img src="${currentUserProfile.avatarURL}" class="profile-avatar" alt="avatar">` : `<div class="profile-avatar" style="background:#eee;display:flex;align-items:center;justify-content:center;font-size:3rem;">🙏</div>`;
+    document.getElementById('profile-content').innerHTML = `
+        <div style="display:flex;gap:2rem;align-items:center;flex-wrap:wrap;">
+            <div>${avatarHTML}<br><input type="file" id="avatar-upload" accept="image/*" style="margin-top:0.5rem;"><button class="btn-secondary" id="upload-avatar-btn">Changer</button></div>
+            <div><h3>${currentUserProfile.name}</h3><p>Email : ${currentUser.email}</p><p>Varna : ${currentUserProfile.varnaProfile ? 'Défini' : 'Non défini'}</p><button class="btn-primary" onclick="switchTab('questionnaire')">🧘 Refaire le test Varna</button></div>
+        </div>
+        <hr style="margin:2rem 0;">
+        <h3>📝 Journal de Sadhana</h3><div id="sadhana-log"></div>
+        <div style="margin-top:1rem;"><input type="number" id="rounds" placeholder="Rondes" style="width:80px;"> <input type="number" id="meditation" placeholder="Méditation (min)" style="width:120px;"> <label><input type="checkbox" id="reading"> Lecture</label> <button class="btn-primary" id="save-sadhana">Enregistrer</button></div>
+        <hr style="margin:2rem 0;">
+        <h3>📦 Historique des commandes</h3><div id="order-history"></div>
+    `;
+    document.getElementById('upload-avatar-btn').addEventListener('click',async ()=>{
+        const file = document.getElementById('avatar-upload').files[0];
+        if(!file) return showToast('Sélectionnez une image.');
+        const storageRef = storage.ref(`avatars/${currentUser.uid}`);
+        const uploadTask = storageRef.put(file);
+        uploadTask.on('state_changed',null,error=>showToast(error.message),async ()=>{
+            const url = await uploadTask.snapshot.ref.getDownloadURL();
+            await db.collection('users').doc(currentUser.uid).update({avatarURL:url});
+            currentUserProfile.avatarURL = url;
+            renderProfile();
+            showToast('Avatar mis à jour !');
+        });
+    });
+    loadSadhanaLogs();
+    loadOrderHistory();
+}
+async function loadSadhanaLogs() {
+    const logDiv = document.getElementById('sadhana-log');
+    const snapshot = await db.collection('users').doc(currentUser.uid).collection('sadhana').orderBy('date','desc').limit(7).get();
+    let html = '<table class="sadhana-table"><tr><th>Date</th><th>Rondes</th><th>Méditation</th><th>Lecture</th></tr>';
+    snapshot.forEach(doc=>{ const d=doc.data(); html+=`<tr><td>${d.date}</td><td>${d.rounds}</td><td>${d.meditation} min</td><td>${d.reading?'✅':'❌'}</td></tr>`; });
+    html += '</table>';
+    logDiv.innerHTML = html || '<p>Aucune saisie récente.</p>';
+}
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'save-sadhana') {
+        const rounds = document.getElementById('rounds').value || 0;
+        const meditation = document.getElementById('meditation').value || 0;
+        const reading = document.getElementById('reading').checked;
+        const today = new Date().toISOString().split('T')[0];
+        db.collection('users').doc(currentUser.uid).collection('sadhana').doc(today).set({
+            date: today, rounds: parseInt(rounds), meditation: parseInt(meditation), reading,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(()=>{ showToast('Sadhana enregistré !'); loadSadhanaLogs(); });
+    }
+});
+async function loadOrderHistory() {
+    const ordersDiv = document.getElementById('order-history');
+    if (!currentUser) return;
+    const snapshot = await db.collection('orders').where('userId','==',currentUser.uid).orderBy('createdAt','desc').limit(10).get();
+    let html = '';
+    snapshot.forEach(doc=>{
+        const order = doc.data();
+        html += `<div style="margin-bottom:1rem;border:1px solid #eee;padding:1rem;border-radius:8px;">
+            <strong>Commande du ${new Date(order.createdAt.toDate()).toLocaleDateString()}</strong>
+            <span style="margin-left:1rem; padding:0.2rem 0.6rem; border-radius:12px; font-size:0.85rem; background:${order.status==='paid'?'#d4edda':'#fff3cd'};">
+                ${order.status==='paid'?'Payé':'En attente'}
+            </span>
+            <ul>${order.items.map(i=>`<li>${i.name} x${i.quantity} – ${i.price}€ (${formatFCFA(i.price * i.quantity)})</li>`).join('')}</ul>
+            <p>Total : ${order.total.toFixed(2)} € (${formatFCFA(order.total)})</p>
+            <p style="font-size:0.8rem;">Méthode : ${order.paymentMethod||'Stripe'}</p>
+        </div>`;
+    });
+    ordersDiv.innerHTML = html || '<p>Aucune commande passée.</p>';
+}
+function renderProfileIfActive() { if (!document.getElementById('profile-section').classList.contains('hidden')) renderProfile(); }
+function renderCommunitiesIfActive() { if (!document.getElementById('community-section').classList.contains('hidden')) renderCommunities(); }
+
+// ==================== FORMATIONS (lié au Varna) ====================
+function renderFormations() {
+    const profile = getProfile();
+    const varnaSelect = document.getElementById('form-adulte-varna');
+    const varnaSuggestion = document.getElementById('varna-suggestion');
+    if (profile) {
+        const dominant = Object.entries(profile).sort((a,b)=>b[1]-a[1])[0];
+        const dominantKey = dominant[0];
+        const varnaMap = { b:'brahmana', k:'kshatriya', v:'vaishya', s:'shudra' };
+        const dominantVarna = varnaMap[dominantKey];
+        varnaSuggestion.innerHTML = `✅ Votre Varna dominant détecté : <strong>${VARNA_INFO[dominantKey].icon} ${VARNA_INFO[dominantKey].name}</strong> (${dominant[1]}%). Vous pouvez le modifier si nécessaire.`;
+        varnaSelect.value = dominantVarna;
+    } else {
+        varnaSuggestion.innerHTML = '⚠️ Vous n\'avez pas encore passé le questionnaire Varna. <a href="#" id="go-quiz-from-form">Passez-le ici</a> pour une suggestion automatique.';
+        document.getElementById('go-quiz-from-form')?.addEventListener('click', (e) => { e.preventDefault(); switchTab('questionnaire'); });
+        varnaSelect.value = '';
+    }
+}
+document.getElementById('submit-formation-adulte').addEventListener('click', async () => {
+    const nom = document.getElementById('form-adulte-nom').value.trim();
+    const email = document.getElementById('form-adulte-email').value.trim();
+    const varna = document.getElementById('form-adulte-varna').value;
+    const sciences = Array.from(document.getElementById('form-adulte-science').selectedOptions).map(o => o.value);
+    const message = document.getElementById('form-adulte-message').value.trim();
+    if (!nom || !email) { showToast('Nom et email requis.'); return; }
+    if (sciences.length === 0) { showToast('Veuillez choisir au moins une science.'); return; }
+    try {
+        await db.collection('inscriptions_formations').add({
+            nom, email, varna, sciences, message,
+            userId: currentUser?.uid || null,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        document.getElementById('form-adulte-nom').value = '';
+        document.getElementById('form-adulte-email').value = '';
+        document.getElementById('form-adulte-varna').value = '';
+        document.getElementById('form-adulte-science').selectedIndex = -1;
+        document.getElementById('form-adulte-message').value = '';
+        document.getElementById('form-adulte-success').textContent = '✅ Inscription enregistrée ! Nous vous contacterons.';
+        showToast('Inscription adulte envoyée avec succès.');
+    } catch (error) { showToast('Erreur : ' + error.message); }
+});
+document.getElementById('submit-gurukul').addEventListener('click', async () => {
+    const enfant = document.getElementById('gurukul-nom-enfant').value.trim();
+    const age = document.getElementById('gurukul-age').value;
+    const parent = document.getElementById('gurukul-parent').value.trim();
+    const email = document.getElementById('gurukul-email').value.trim();
+    const message = document.getElementById('gurukul-message').value.trim();
+    if (!enfant || !age || !parent || !email) { showToast('Tous les champs obligatoires (*) sont requis.'); return; }
+    try {
+        await db.collection('gurukul_inscriptions').add({
+            enfant, age: parseInt(age), parent, email, message,
+            userId: currentUser?.uid || null,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        document.getElementById('gurukul-nom-enfant').value = '';
+        document.getElementById('gurukul-age').value = '';
+        document.getElementById('gurukul-parent').value = '';
+        document.getElementById('gurukul-email').value = '';
+        document.getElementById('gurukul-message').value = '';
+        document.getElementById('gurukul-success').textContent = '✅ Enfant inscrit au Gurukul ! Nous vous contacterons.';
+        showToast('Inscription Gurukul envoyée avec succès.');
+    } catch (error) { showToast('Erreur : ' + error.message); }
+});
+
+// ==================== PARTICIPER ====================
+document.getElementById('submit-participation').addEventListener('click', async () => {
+    const name = document.getElementById('part-name').value.trim();
+    const email = document.getElementById('part-email').value.trim();
+    const roles = Array.from(document.getElementById('part-role').selectedOptions).map(o => o.value);
+    const message = document.getElementById('part-message').value.trim();
+    if (!name || !email) { showToast('Veuillez remplir le nom et l\'email.'); return; }
+    try {
+        await db.collection('participants').add({
+            name, email, roles, message,
+            userId: currentUser?.uid || null,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        document.getElementById('part-name').value = ''; document.getElementById('part-email').value = '';
+        document.getElementById('part-role').selectedIndex = -1; document.getElementById('part-message').value = '';
+        document.getElementById('part-success').textContent = '✅ Votre candidature a bien été enregistrée ! Nous vous contacterons bientôt.';
+        showToast('Inscription envoyée avec succès !');
+    } catch (error) { showToast('Erreur : ' + error.message); }
+});
+
+// ==================== COLLECTE DE DONS (PARTICIPER) ====================
+const GOAL_AMOUNT = 5000; // Objectif en euros
+function listenToDonations() {
+    db.collection('donations').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
+        let total = 0;
+        const donorsHTML = [];
+        snapshot.forEach(doc => {
+            const donation = doc.data();
+            total += donation.amount || 0;
+            const date = donation.createdAt ? new Date(donation.createdAt.toDate()).toLocaleDateString() : '';
+            donorsHTML.push(`
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:0.5rem 0; border-bottom:1px solid #eee;">
+                    <div>
+                        <strong>${donation.name || 'Anonyme'}</strong>
+                        ${donation.message ? `<br><small style="color:#666;">${donation.message}</small>` : ''}
+                    </div>
+                    <div style="text-align:right;">
+                        <span style="font-weight:bold;">${donation.amount.toFixed(2)} €</span>
+                        ${date ? `<br><small style="color:#999;">${date}</small>` : ''}
+                    </div>
+                </div>
+            `);
+        });
+        document.getElementById('donors-list').innerHTML = donorsHTML.join('') || '<p style="color:#888;">Aucun don pour le moment. Soyez le premier !</p>';
+        document.getElementById('collected-amount').textContent = `${total.toFixed(2)} €`;
+        const progressPercent = Math.min(100, (total / GOAL_AMOUNT) * 100);
+        document.getElementById('progress-bar-donations').style.width = progressPercent + '%';
+    });
+}
+listenToDonations();
+
+// Promesse de don
+document.getElementById('submit-donation').addEventListener('click', async () => {
+    const name = document.getElementById('donor-name').value.trim();
+    const amount = parseFloat(document.getElementById('donor-amount').value);
+    const message = document.getElementById('donor-message').value.trim();
+    if (!name || isNaN(amount) || amount <= 0) {
+        showToast('Veuillez remplir un nom et un montant valide.');
+        return;
+    }
+    try {
+        await db.collection('donations').add({
+            name,
+            amount,
+            message,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        document.getElementById('donor-name').value = '';
+        document.getElementById('donor-amount').value = '';
+        document.getElementById('donor-message').value = '';
+        showToast('Merci ! Votre promesse a été enregistrée. Effectuez le paiement YAS pour confirmer.');
+    } catch (error) {
+        showToast('Erreur : ' + error.message);
+    }
+});
+
+// ==================== TRADUCTION ====================
+document.getElementById('lang-select').addEventListener('change', function(e) {
+    var lang = e.target.value;
+    var select = document.querySelector('.goog-te-combo');
+    if (select) {
+        select.value = lang;
+        select.dispatchEvent(new Event('change'));
+    }
+});
+window.addEventListener('load', function() {
+    var userLang = navigator.language || navigator.userLanguage;
+    var lang = userLang.startsWith('fr') ? 'fr' : 'en';
+    document.getElementById('lang-select').value = lang;
+    setTimeout(() => {
+        var select = document.querySelector('.goog-te-combo');
+        if (select) {
+            select.value = lang;
+            select.dispatchEvent(new Event('change'));
+        }
+    }, 1000);
+});
+
+// ==================== INITIALISATION ====================
+function init() {
+    renderUserArea();
+    renderQuestion(0);
+    if (!localStorage.getItem(COMM_KEY)) saveCommunities(defaultCommunities());
+    updateCartBadge();
+    switchTab('discovery');
+}
+init();
+
+// Google Translate Widget
+function googleTranslateElementInit() {
+    new google.translate.TranslateElement(
+        {
+            pageLanguage: 'fr',
+            includedLanguages: 'fr,en',
+            layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+            autoDisplay: false
+        },
+        'google_translate_element'
+    );
+    setTimeout(() => {
+        const banner = document.querySelector('.goog-te-banner-frame');
+        if (banner) banner.style.display = 'none';
+        document.body.style.top = '0';
+    }, 500);
+}
+</script>
+<script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+</body>
+</html>
